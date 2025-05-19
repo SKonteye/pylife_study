@@ -23,22 +23,22 @@ import scipy
 
 # pylife
 import pylife
-import pylife.vmap
-import pylife.stress.equistress
-import pylife.strength.fkm_load_distribution
-import pylife.strength.damage_parameter
-import pylife.strength.woehler_fkm_nonlinear
 import pylife.materiallaws
-import pylife.stress.rainflow
-import pylife.stress.rainflow.recorders
-import pylife.stress.rainflow.fkm_nonlinear
 import pylife.materiallaws.notch_approximation_law
+import pylife.strength.damage_parameter
+import pylife.strength.fkm_load_distribution
+import pylife.strength.woehler_fkm_nonlinear
+import pylife.stress.equistress
+import pylife.stress.rainflow
+import pylife.stress.rainflow.fkm_nonlinear
+import pylife.stress.rainflow.recorders
+import pylife.vmap
 from pylife.strength.fkm_nonlinear.constants import FKMNLConstants
 
-''' Collection of functions for computational proof of the strength
+""" Collection of functions for computational proof of the strength
     for machine elements considering their non-linear material deformation
     (FKM non-linear guideline 2019)
-'''
+"""
 
 
 def calculate_cyclic_assessment_parameters(assessment_parameters_):
@@ -71,7 +71,8 @@ def calculate_cyclic_assessment_parameters(assessment_parameters_):
 
     """
     assessment_parameters = assessment_parameters_.copy()
-    assert "R_m" in assessment_parameters
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
@@ -82,9 +83,17 @@ def calculate_cyclic_assessment_parameters(assessment_parameters_):
 
     # for FKM nonlinear, R_m is used to estimate material data
     # compute K' according to eq. (2.5-13)
-    assessment_parameters["K_prime"] = constants.a_sigma * assessment_parameters.R_m ** constants.b_sigma \
-        / (np.minimum(constants.epsilon_grenz, constants.a_epsilon * assessment_parameters.R_m ** constants.b_epsilon)) \
-            ** constants.n_prime
+    assessment_parameters["K_prime"] = (
+        constants.a_sigma
+        * assessment_parameters.R_m**constants.b_sigma
+        / (
+            np.minimum(
+                constants.epsilon_grenz,
+                constants.a_epsilon * assessment_parameters.R_m**constants.b_epsilon,
+            )
+        )
+        ** constants.n_prime
+    )
 
     return assessment_parameters
 
@@ -122,8 +131,10 @@ def calculate_material_woehler_parameters_P_RAM(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "P_A" in assessment_parameters
-    assert "R_m" in assessment_parameters
+    if "P_A" not in assessment_parameters:
+        raise AssertionError
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
@@ -136,26 +147,37 @@ def calculate_material_woehler_parameters_P_RAM(assessment_parameters_):
 
     # computations for P_RAM
     # compute sampling point "Z" according to eq. (2.5-22)
-    assessment_parameters["P_RAM_Z_WS"] = constants.a_PZ_RAM \
-        * assessment_parameters.R_m ** constants.b_PZ_RAM
+    assessment_parameters["P_RAM_Z_WS"] = (
+        constants.a_PZ_RAM * assessment_parameters.R_m**constants.b_PZ_RAM
+    )
 
     # compute sampling point "D" according to eq. (2.5-23)
-    assessment_parameters["P_RAM_D_WS"] = constants.a_PD_RAM \
-        * assessment_parameters.R_m ** constants.b_PD_RAM
+    assessment_parameters["P_RAM_D_WS"] = (
+        constants.a_PD_RAM * assessment_parameters.R_m**constants.b_PD_RAM
+    )
 
     # depending on P_A, add the factor f_2.5%, as described in eqs. (2.5-22), (2.5-23)
     if np.isclose(assessment_parameters.P_A, 0.5):
-
         # add a note
-        assessment_parameters["notes"] += "P_A is 0.5: no scaling of P_RAM woehler curve to 2.5%.\n"
+        assessment_parameters["notes"] += (
+            "P_A is 0.5: no scaling of P_RAM woehler curve to 2.5%.\n"
+        )
 
     else:
         # rescale woehler curve with f_2.5%, eqs. (2.5-22), (2.5-23)
-        assessment_parameters.P_RAM_Z_WS = constants.f_25percent_material_woehler_RAM * assessment_parameters.P_RAM_Z_WS
-        assessment_parameters.P_RAM_D_WS = constants.f_25percent_material_woehler_RAM * assessment_parameters.P_RAM_D_WS
+        assessment_parameters.P_RAM_Z_WS = (
+            constants.f_25percent_material_woehler_RAM
+            * assessment_parameters.P_RAM_Z_WS
+        )
+        assessment_parameters.P_RAM_D_WS = (
+            constants.f_25percent_material_woehler_RAM
+            * assessment_parameters.P_RAM_D_WS
+        )
 
         # add a note
-        assessment_parameters["notes"] += f"P_A not 0.5 (but {assessment_parameters.P_A}): scale P_RAM woehler curve by f_2.5% = {constants.f_25percent_material_woehler_RAM}.\n"
+        assessment_parameters["notes"] += (
+            f"P_A not 0.5 (but {assessment_parameters.P_A}): scale P_RAM woehler curve by f_2.5% = {constants.f_25percent_material_woehler_RAM}.\n"
+        )
 
     # use constant values for d_1 and d_2
     assessment_parameters["d_1"] = constants.d_1
@@ -196,8 +218,10 @@ def calculate_material_woehler_parameters_P_RAJ(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "P_A" in assessment_parameters
-    assert "R_m" in assessment_parameters
+    if "P_A" not in assessment_parameters:
+        raise AssertionError
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
@@ -210,27 +234,37 @@ def calculate_material_woehler_parameters_P_RAJ(assessment_parameters_):
 
     # computations for P_RAJ
     # compute first sampling point for N=1 according to eq. (2.8-20), (2.9-12)
-    assessment_parameters["P_RAJ_Z_WS"] = constants.a_PZ_RAJ \
-        * assessment_parameters.R_m ** constants.b_PZ_RAJ
+    assessment_parameters["P_RAJ_Z_WS"] = (
+        constants.a_PZ_RAJ * assessment_parameters.R_m**constants.b_PZ_RAJ
+    )
 
     # compute second sampling point, the infinite life threshold according to eq. (2.8-21), note the error in (2.9-13) (should be P_RAJ,D,WS)
-    assessment_parameters["P_RAJ_D_WS"] = constants.a_PD_RAJ \
-        * assessment_parameters.R_m ** constants.b_PD_RAJ
-
+    assessment_parameters["P_RAJ_D_WS"] = (
+        constants.a_PD_RAJ * assessment_parameters.R_m**constants.b_PD_RAJ
+    )
 
     # depending on P_A, add the factor f_2.5%, as described in eqs. (2.5-22), (2.5-23)
     if np.isclose(assessment_parameters.P_A, 0.5):
-
         # add a note
-        assessment_parameters["notes"] += "P_A is 0.5: no scaling of P_RAJ woehler curve to 2.5%.\n"
+        assessment_parameters["notes"] += (
+            "P_A is 0.5: no scaling of P_RAJ woehler curve to 2.5%.\n"
+        )
 
     else:
         # rescale woehler curve with f_2.5%, eqs. (2.8-20), (2.8-21)
-        assessment_parameters.P_RAJ_Z_WS = constants.f_25percent_material_woehler_RAJ * assessment_parameters.P_RAJ_Z_WS
-        assessment_parameters.P_RAJ_D_WS = constants.f_25percent_material_woehler_RAJ * assessment_parameters.P_RAJ_D_WS
+        assessment_parameters.P_RAJ_Z_WS = (
+            constants.f_25percent_material_woehler_RAJ
+            * assessment_parameters.P_RAJ_Z_WS
+        )
+        assessment_parameters.P_RAJ_D_WS = (
+            constants.f_25percent_material_woehler_RAJ
+            * assessment_parameters.P_RAJ_D_WS
+        )
 
         # add a note
-        assessment_parameters["notes"] += f"P_A not 0.5 (but {assessment_parameters.P_A}): scale P_RAJ woehler curve by f_2.5% = {constants.f_25percent_material_woehler_RAJ}.\n"
+        assessment_parameters["notes"] += (
+            f"P_A not 0.5 (but {assessment_parameters.P_A}): scale P_RAJ woehler curve by f_2.5% = {constants.f_25percent_material_woehler_RAJ}.\n"
+        )
 
     # use constant value for d
     assessment_parameters["d_RAJ"] = constants.d_RAJ
@@ -273,7 +307,9 @@ def calculate_roughness_material_woehler_parameters_P_RAM(assessment_parameters_
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assessment_parameters["P_RAM_D_WS_rau"] = assessment_parameters["P_RAM_D_WS"] * assessment_parameters["K_RP"]
+    assessment_parameters["P_RAM_D_WS_rau"] = (
+        assessment_parameters["P_RAM_D_WS"] * assessment_parameters["K_RP"]
+    )
 
     # log(f(N)) = d_2 * log(N-1e3) + log(P_RAM_Z_WS)
     # log(f(N_D)) = d_2 * [log(N_D)-log(1e3)] + log(P_RAM_Z_WS) = log(P_RAM_D_WS)
@@ -283,17 +319,28 @@ def calculate_roughness_material_woehler_parameters_P_RAM(assessment_parameters_
     # d2_RAM_rau = log(P_RAM_D_WS_rau / P_RAM_Z_WS) / log(N_D/1e3)
     # d2_RAM_rau = d_2 * log(P_RAM_D_WS_rau / P_RAM_Z_WS) / log(P_RAM_D_WS/P_RAM_Z_WS)
 
-    assessment_parameters["d2_RAM_rau"] = assessment_parameters["d_2"] \
-        * (np.log(assessment_parameters["P_RAM_Z_WS"])-np.log(assessment_parameters["P_RAM_D_WS_rau"])) \
-        / (np.log(assessment_parameters["P_RAM_Z_WS"])-np.log(assessment_parameters["P_RAM_D_WS"]))
+    assessment_parameters["d2_RAM_rau"] = (
+        assessment_parameters["d_2"]
+        * (
+            np.log(assessment_parameters["P_RAM_Z_WS"])
+            - np.log(assessment_parameters["P_RAM_D_WS_rau"])
+        )
+        / (
+            np.log(assessment_parameters["P_RAM_Z_WS"])
+            - np.log(assessment_parameters["P_RAM_D_WS"])
+        )
+    )
 
     # alternative calculation via N_D
     # (N_D: Eckschwingspielzahl zur Dauerfestigkeit)
     # this equation does the same as fatigue_life_limit in woehler_fkm_nonlinear
-    N_D = 1e3 * (assessment_parameters["P_RAM_D_WS"] / assessment_parameters["P_RAM_Z_WS"]) ** (1/assessment_parameters["d_2"])
+    N_D = 1e3 * (
+        assessment_parameters["P_RAM_D_WS"] / assessment_parameters["P_RAM_Z_WS"]
+    ) ** (1 / assessment_parameters["d_2"])
 
-    assessment_parameters["d2_RAM_rau_alternative"] = np.log(assessment_parameters["P_RAM_D_WS_rau"] \
-        / assessment_parameters["P_RAM_Z_WS"]) / np.log(N_D/1e3)
+    assessment_parameters["d2_RAM_rau_alternative"] = np.log(
+        assessment_parameters["P_RAM_D_WS_rau"] / assessment_parameters["P_RAM_Z_WS"]
+    ) / np.log(N_D / 1e3)
 
     return assessment_parameters
 
@@ -334,26 +381,43 @@ def calculate_roughness_material_woehler_parameters_P_RAJ(assessment_parameters_
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assessment_parameters["P_RAJ_Z_1e3"] = assessment_parameters["P_RAJ_Z_WS"]*np.power(1e3, assessment_parameters["d_RAJ"])
-    assessment_parameters["P_RAJ_D_WS_rau"] = assessment_parameters["P_RAJ_D_WS"] * assessment_parameters["K_RP"]**2.
+    assessment_parameters["P_RAJ_Z_1e3"] = assessment_parameters[
+        "P_RAJ_Z_WS"
+    ] * np.power(1e3, assessment_parameters["d_RAJ"])
+    assessment_parameters["P_RAJ_D_WS_rau"] = (
+        assessment_parameters["P_RAJ_D_WS"] * assessment_parameters["K_RP"] ** 2.0
+    )
 
-    assessment_parameters["d_RAJ_2_rau"] = assessment_parameters["d_RAJ"] \
-        * (np.log(assessment_parameters["P_RAJ_Z_1e3"])-np.log(assessment_parameters["P_RAJ_D_WS_rau"])) \
-        / (np.log(assessment_parameters["P_RAJ_Z_1e3"])-np.log(assessment_parameters["P_RAJ_D_WS"]))
+    assessment_parameters["d_RAJ_2_rau"] = (
+        assessment_parameters["d_RAJ"]
+        * (
+            np.log(assessment_parameters["P_RAJ_Z_1e3"])
+            - np.log(assessment_parameters["P_RAJ_D_WS_rau"])
+        )
+        / (
+            np.log(assessment_parameters["P_RAJ_Z_1e3"])
+            - np.log(assessment_parameters["P_RAJ_D_WS"])
+        )
+    )
 
     # alternative calculation via N_D
     # N_D: Eckschwingspielzahl zur Dauerfestigkeit
     # this equation does the same as fatigue_life_limit in woehler_fkm_nonlinear
-    N_D = (assessment_parameters["P_RAJ_D_WS"] / assessment_parameters["P_RAJ_Z_WS"]) ** (1/assessment_parameters["d_RAJ"])
+    N_D = (
+        assessment_parameters["P_RAJ_D_WS"] / assessment_parameters["P_RAJ_Z_WS"]
+    ) ** (1 / assessment_parameters["d_RAJ"])
 
     # P_RAJ_D*K**2=P_RAJ_Z_1e3 * (N_D/1e3)**r_rau
-    assessment_parameters["d_RAJ_2_rau_alternative"] = np.log(assessment_parameters["P_RAJ_D_WS_rau"] \
-        / assessment_parameters["P_RAJ_Z_1e3"]) / np.log(N_D/1e3)
+    assessment_parameters["d_RAJ_2_rau_alternative"] = np.log(
+        assessment_parameters["P_RAJ_D_WS_rau"] / assessment_parameters["P_RAJ_Z_1e3"]
+    ) / np.log(N_D / 1e3)
 
     return assessment_parameters
 
 
-def calculate_roughness_component_woehler_parameters_P_RAM(assessment_parameters_, include_n_P):
+def calculate_roughness_component_woehler_parameters_P_RAM(
+    assessment_parameters_, include_n_P
+):
     """Calculate the component woehler curve from the material woehler curve
     (Sec. 2.5.6 of FKM nonlinear), but with the special roughness consideration
     described in the extension surface layer & roughness.
@@ -400,26 +464,36 @@ def calculate_roughness_component_woehler_parameters_P_RAM(assessment_parameters
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "gamma_M_RAM" in assessment_parameters
-    assert "P_RAM_Z_WS" in assessment_parameters
-    assert "P_RAM_D_WS_rau" in assessment_parameters
+    if "gamma_M_RAM" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAM_Z_WS" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAM_D_WS_rau" not in assessment_parameters:
+        raise AssertionError
 
     # set n_P only if it should be added (for the surface point in FKM nonlinear roughness & surface layer)
     n_P = 1
     if include_n_P:
-        assert "n_P" in assessment_parameters
+        if "n_P" not in assessment_parameters:
+            raise AssertionError
         n_P = assessment_parameters.n_P
 
     # calculate first knee point of component Woehler curve, eq. (2.5-25) in the FKM nonlinear guideline without roughness
-    assessment_parameters["P_RAM_Z"] = n_P / assessment_parameters.gamma_M_RAM * assessment_parameters.P_RAM_Z_WS
+    assessment_parameters["P_RAM_Z"] = (
+        n_P / assessment_parameters.gamma_M_RAM * assessment_parameters.P_RAM_Z_WS
+    )
 
     # calculate fatigue strength limit of the component, i.e., the P_RAM value below which we have infinite life, rhs of eq. (2.6-88)
-    assessment_parameters["P_RAM_D"] = n_P / assessment_parameters.gamma_M_RAM * assessment_parameters.P_RAM_D_WS_rau
+    assessment_parameters["P_RAM_D"] = (
+        n_P / assessment_parameters.gamma_M_RAM * assessment_parameters.P_RAM_D_WS_rau
+    )
 
     return assessment_parameters
 
 
-def calculate_roughness_component_woehler_parameters_P_RAJ(assessment_parameters_, include_n_P):
+def calculate_roughness_component_woehler_parameters_P_RAJ(
+    assessment_parameters_, include_n_P
+):
     """Calculate the component woehler curve from the material woehler curve
     (Sec. 2.8.6 of FKM nonlinear), but with the special roughness consideration
     described in the extension surface layer & roughness.
@@ -467,25 +541,39 @@ def calculate_roughness_component_woehler_parameters_P_RAJ(assessment_parameters
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "gamma_M_RAJ" in assessment_parameters
-    assert "P_RAJ_Z_WS" in assessment_parameters
-    assert "P_RAJ_D_WS_rau" in assessment_parameters
+    if "gamma_M_RAJ" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAJ_Z_WS" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAJ_D_WS_rau" not in assessment_parameters:
+        raise AssertionError
 
     # set n_P only if it should be added (for the surface point in FKM nonlinear roughness & surface layer)
     n_P = 1
     if include_n_P:
-        assert "n_P" in assessment_parameters
+        if "n_P" not in assessment_parameters:
+            raise AssertionError
         n_P = assessment_parameters.n_P
 
     # calculations for P_RAJ of component Woehler curve
     # eq. (2.8-23), (2.9-25)
-    assessment_parameters["P_RAJ_Z"] = n_P**2 / assessment_parameters.gamma_M_RAJ * assessment_parameters.P_RAJ_Z_WS
+    assessment_parameters["P_RAJ_Z"] = (
+        n_P**2 / assessment_parameters.gamma_M_RAJ * assessment_parameters.P_RAJ_Z_WS
+    )
 
     # also shift the knee point of the roughness P_RAJ woehler curve
-    assessment_parameters["P_RAJ_Z_1e3"] = n_P**2 / assessment_parameters.gamma_M_RAJ * assessment_parameters["P_RAJ_Z_1e3"]
+    assessment_parameters["P_RAJ_Z_1e3"] = (
+        n_P**2
+        / assessment_parameters.gamma_M_RAJ
+        * assessment_parameters["P_RAJ_Z_1e3"]
+    )
 
     # eq. (2.8-24), (2.9-26). Note that there is also eq. 2.9-13, but this is errorneous and not relevant here.
-    assessment_parameters["P_RAJ_D_0"] = n_P**2 / assessment_parameters.gamma_M_RAJ * assessment_parameters.P_RAJ_D_WS_rau
+    assessment_parameters["P_RAJ_D_0"] = (
+        n_P**2
+        / assessment_parameters.gamma_M_RAJ
+        * assessment_parameters.P_RAJ_D_WS_rau
+    )
 
     # eq. (2.8-25), (2.9-27)
     assessment_parameters["P_RAJ_D"] = assessment_parameters.P_RAJ_D_0
@@ -531,21 +619,33 @@ def calculate_nonlocal_parameters(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "A_ref" in assessment_parameters
-    assert "A_sigma" in assessment_parameters
-    assert "G" in assessment_parameters
-    assert "R_m" in assessment_parameters
+    if "A_ref" not in assessment_parameters:
+        raise AssertionError
+    if "A_sigma" not in assessment_parameters:
+        raise AssertionError
+    if "G" not in assessment_parameters:
+        raise AssertionError
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
 
     # calculate statistic coefficient, eq. (2.5-28)
-    assessment_parameters["n_st"] = (assessment_parameters.A_ref / assessment_parameters.A_sigma) \
-        ** (1 / constants.k_st)
+    assessment_parameters["n_st"] = (
+        assessment_parameters.A_ref / assessment_parameters.A_sigma
+    ) ** (1 / constants.k_st)
 
     # eq. (2.5-32)
-    k_ = 5 * assessment_parameters.n_st + assessment_parameters.R_m / constants.R_m_bm \
-        * np.sqrt((7.5 + np.sqrt(assessment_parameters.G)) / (1 + 0.2*np.sqrt(assessment_parameters.G)))
+    k_ = (
+        5 * assessment_parameters.n_st
+        + assessment_parameters.R_m
+        / constants.R_m_bm
+        * np.sqrt(
+            (7.5 + np.sqrt(assessment_parameters.G))
+            / (1 + 0.2 * np.sqrt(assessment_parameters.G))
+        )
+    )
 
     # eq. (2.5-31)
     assessment_parameters["n_bm_"] = (5 + np.sqrt(assessment_parameters.G)) / k_
@@ -554,7 +654,9 @@ def calculate_nonlocal_parameters(assessment_parameters_):
     assessment_parameters["n_bm"] = np.maximum(assessment_parameters.n_bm_, 1)
 
     # calculate total coefficient, eq. (2.5-27)
-    assessment_parameters["n_P"] =  assessment_parameters.n_bm * assessment_parameters.n_st
+    assessment_parameters["n_P"] = (
+        assessment_parameters.n_bm * assessment_parameters.n_st
+    )
 
     return assessment_parameters
 
@@ -595,22 +697,30 @@ def calculate_roughness_parameter(assessment_parameters_):
 
     # if K_RP is already set (e.g., manually set to 1), do nothing
     if "K_RP" in assessment_parameters:
-        print(f"The parameter `K_RP` is already set to {assessment_parameters.K_RP}, not using the FKM formula.")
+        print(
+            f"The parameter `K_RP` is already set to {assessment_parameters.K_RP}, not using the FKM formula."
+        )
         return assessment_parameters
 
-    assert "R_m" in assessment_parameters
-    assert "R_z" in assessment_parameters
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
+    if "R_z" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
 
     # calculate roughness factor, eq. (2.5-37)
     if assessment_parameters.R_z > 1:
-        assessment_parameters["K_RP"] = (1 - constants.a_RP * np.log10(assessment_parameters.R_z) \
-            * np.log10(2 * assessment_parameters.R_m / constants.R_m_N_min)) ** constants.b_RP
+        assessment_parameters["K_RP"] = (
+            1
+            - constants.a_RP
+            * np.log10(assessment_parameters.R_z)
+            * np.log10(2 * assessment_parameters.R_m / constants.R_m_N_min)
+        ) ** constants.b_RP
 
     else:
-        assessment_parameters["K_RP"] = 1.
+        assessment_parameters["K_RP"] = 1.0
 
     return assessment_parameters
 
@@ -633,11 +743,15 @@ def compute_beta(P_A):
 
     """
     sigma = 1
-    result = scipy.optimize.root(lambda x: abs(scipy.stats.norm.cdf(x, 0, sigma)-P_A), x0=-0.6, tol=1e-10)
+    result = scipy.optimize.root(
+        lambda x: abs(scipy.stats.norm.cdf(x, 0, sigma) - P_A), x0=-0.6, tol=1e-10
+    )
 
     if not result.success:
-        raise RuntimeError(f"Could not compute the value of beta for P_A={P_A}, "
-                           "the optimizer did not find a solution.")
+        raise RuntimeError(
+            f"Could not compute the value of beta for P_A={P_A}, "
+            "the optimizer did not find a solution."
+        )
 
     return -result.x[0] / sigma
 
@@ -675,16 +789,20 @@ def calculate_failure_probability_factor_P_RAM(assessment_parameters_):
     assessment_parameters = assessment_parameters_.copy()
 
     if "beta" not in assessment_parameters:
-        assert "P_A" in assessment_parameters
+        if "P_A" not in assessment_parameters:
+            raise AssertionError
 
         P_A = assessment_parameters.P_A
-        assert P_A > 0
+        if P_A <= 0:
+            raise AssertionError
 
         assessment_parameters["beta"] = compute_beta(assessment_parameters.P_A)
 
     if "beta" in assessment_parameters:
         # eq. (2.5-38)
-        assessment_parameters["gamma_M_RAM"] = np.max([10**((0.8*assessment_parameters.beta - 2)*0.08), 1.1])
+        assessment_parameters["gamma_M_RAM"] = np.max(
+            [10 ** ((0.8 * assessment_parameters.beta - 2) * 0.08), 1.1]
+        )
 
     # set to 1 for P_A = 0.5
     if np.isclose(assessment_parameters.P_A, 0.5):
@@ -726,16 +844,20 @@ def calculate_failure_probability_factor_P_RAJ(assessment_parameters_):
     assessment_parameters = assessment_parameters_.copy()
 
     if "beta" not in assessment_parameters:
-        assert "P_A" in assessment_parameters
+        if "P_A" not in assessment_parameters:
+            raise AssertionError
 
         P_A = assessment_parameters.P_A
-        assert P_A > 0
+        if P_A <= 0:
+            raise AssertionError
 
         assessment_parameters["beta"] = compute_beta(assessment_parameters.P_A)
 
     if "beta" in assessment_parameters:
         # eq. (2.8-38)
-        assessment_parameters["gamma_M_RAJ"] = np.max([10**((0.8*assessment_parameters.beta - 2)*0.155), 1.2])
+        assessment_parameters["gamma_M_RAJ"] = np.max(
+            [10 ** ((0.8 * assessment_parameters.beta - 2) * 0.155), 1.2]
+        )
 
     # set to 1 for P_A = 0.5
     if np.isclose(assessment_parameters.P_A, 0.5):
@@ -788,19 +910,29 @@ def calculate_component_woehler_parameters_P_RAM(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "gamma_M_RAM" in assessment_parameters
-    assert "n_P" in assessment_parameters
-    assert "K_RP" in assessment_parameters
-    assert "P_RAM_Z_WS" in assessment_parameters
+    if "gamma_M_RAM" not in assessment_parameters:
+        raise AssertionError
+    if "n_P" not in assessment_parameters:
+        raise AssertionError
+    if "K_RP" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAM_Z_WS" not in assessment_parameters:
+        raise AssertionError
 
     # eq. (2.5-24)
-    assessment_parameters["f_RAM"] = assessment_parameters.gamma_M_RAM / (assessment_parameters.n_P * assessment_parameters.K_RP)
+    assessment_parameters["f_RAM"] = assessment_parameters.gamma_M_RAM / (
+        assessment_parameters.n_P * assessment_parameters.K_RP
+    )
 
     # calculate knee point of component Woehler curve, eq. (2.5-25)
-    assessment_parameters["P_RAM_Z"] = 1 / assessment_parameters.f_RAM * assessment_parameters.P_RAM_Z_WS
+    assessment_parameters["P_RAM_Z"] = (
+        1 / assessment_parameters.f_RAM * assessment_parameters.P_RAM_Z_WS
+    )
 
     # calculate fatigue strength limit of the component, i.e., the P_RAM value below which we have infinite life, rhs of eq. (2.6-88)
-    assessment_parameters["P_RAM_D"] = 1 / assessment_parameters.f_RAM * assessment_parameters.P_RAM_D_WS
+    assessment_parameters["P_RAM_D"] = (
+        1 / assessment_parameters.f_RAM * assessment_parameters.P_RAM_D_WS
+    )
 
     return assessment_parameters
 
@@ -849,21 +981,32 @@ def calculate_component_woehler_parameters_P_RAJ(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "gamma_M_RAJ" in assessment_parameters
-    assert "n_P" in assessment_parameters
-    assert "K_RP" in assessment_parameters
-    assert "P_RAJ_Z_WS" in assessment_parameters
-    assert "P_RAJ_D_WS" in assessment_parameters
+    if "gamma_M_RAJ" not in assessment_parameters:
+        raise AssertionError
+    if "n_P" not in assessment_parameters:
+        raise AssertionError
+    if "K_RP" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAJ_Z_WS" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAJ_D_WS" not in assessment_parameters:
+        raise AssertionError
 
     # eq. (2.9-24) or eq. (2.8-22)
-    assessment_parameters["f_RAJ"] = assessment_parameters.gamma_M_RAJ / (assessment_parameters.n_P**2 * assessment_parameters.K_RP**2)
+    assessment_parameters["f_RAJ"] = assessment_parameters.gamma_M_RAJ / (
+        assessment_parameters.n_P**2 * assessment_parameters.K_RP**2
+    )
 
     # calculations for P_RAJ of component Woehler curve
     # eq. (2.8-23), (2.9-25)
-    assessment_parameters["P_RAJ_Z"] = 1 / assessment_parameters.f_RAJ * assessment_parameters.P_RAJ_Z_WS
+    assessment_parameters["P_RAJ_Z"] = (
+        1 / assessment_parameters.f_RAJ * assessment_parameters.P_RAJ_Z_WS
+    )
 
     # eq. (2.8-24), (2.9-26). Note that there is also eq. 2.9-13, but this is errorneous and not relevant here.
-    assessment_parameters["P_RAJ_D_0"] = 1 / assessment_parameters.f_RAJ * assessment_parameters.P_RAJ_D_WS
+    assessment_parameters["P_RAJ_D_0"] = (
+        1 / assessment_parameters.f_RAJ * assessment_parameters.P_RAJ_D_WS
+    )
 
     # eq. (2.8-25), (2.9-27)
     assessment_parameters["P_RAJ_D"] = assessment_parameters.P_RAJ_D_0

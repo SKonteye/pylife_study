@@ -17,8 +17,9 @@
 __author__ = "Johannes Mueller"
 __maintainer__ = __author__
 
-from abc import ABCMeta, abstractmethod
 import warnings
+from abc import ABCMeta, abstractmethod
+
 import numpy as np
 import pandas as pd
 
@@ -61,7 +62,11 @@ def find_turns(samples):
     def clean_nans(samples):
         nans = pd.isna(samples)
         if nans.any():
-            warnings.warn(UserWarning("At least one NaN like value has been dropped from the input signal."))
+            warnings.warn(
+                UserWarning(
+                    "At least one NaN like value has been dropped from the input signal."
+                )
+            )
             return samples[~nans], nans
         return samples, None
 
@@ -87,7 +92,9 @@ def find_turns(samples):
                     dups_ends = dups_ends[1:]
                 if cut_starts:
                     dups_starts = dups_starts[:-1]
-                plateau_turns[dups_starts[np.where(diffs[dups_starts] * diffs[dups_ends+1] < 0)]] = True
+                plateau_turns[
+                    dups_starts[np.where(diffs[dups_starts] * diffs[dups_ends + 1] < 0)]
+                ] = True
 
         return plateau_turns
 
@@ -331,19 +338,23 @@ class AbstractDetector(metaclass=ABCMeta):
         sample_tail_index = turn_index[-1] if turn_index.size > 0 else 0
         turn_index += self._head_index - len(self._sample_tail)
 
-        self._sample_tail = samples_with_last_tail[sample_tail_index:]  # FIXME: samples_with_last_tail[-1:] also possible?
+        self._sample_tail = samples_with_last_tail[
+            sample_tail_index:
+        ]  # FIXME: samples_with_last_tail[-1:] also possible?
         self._head_index += len(samples)
 
         if flush and len(self._sample_tail) > 0:
             turn_index, turn_values = self._flush_new_turns(turn_index, turn_values)
 
         if preserve_start:
-            turn_index, turn_values = self._preserve_start(turn_index, turn_values, samples[0])
+            turn_index, turn_values = self._preserve_start(
+                turn_index, turn_values, samples[0]
+            )
 
         return turn_index, turn_values
 
     def _flush_new_turns(self, turn_index, turn_values):
-        turn_index = np.concatenate((turn_index, [self._head_index-1]))
+        turn_index = np.concatenate((turn_index, [self._head_index - 1]))
 
         if isinstance(turn_values, np.ndarray):
             turn_values = np.concatenate((turn_values, [self._sample_tail[-1]]))
@@ -356,7 +367,6 @@ class AbstractDetector(metaclass=ABCMeta):
     def _preserve_start(self, turn_index, turn_values, first_sample):
         if turn_index.size > 0:
             if turn_index[0] > 0:
-
                 # prepend first sample to results
                 turn_index = np.insert(turn_index, 0, 0)
 
@@ -366,9 +376,9 @@ class AbstractDetector(metaclass=ABCMeta):
                     turn_values.insert(0, first_sample)
         return turn_index, turn_values
 
-
-
-    def _new_turns_multiple_assessment_points(self, samples, flush=False, preserve_start=False):
+    def _new_turns_multiple_assessment_points(
+        self, samples, flush=False, preserve_start=False
+    ):
         """Provide new turning points for the next chunk. This function
         is used when the assessment considers multiple points at once.
         The function is called from `_new_turns`.
@@ -401,21 +411,32 @@ class AbstractDetector(metaclass=ABCMeta):
         """
 
         assert isinstance(samples[0], pd.DataFrame)
-        assert samples[0].index.names == ["load_step", "node_id"]
+        if samples[0].index.names != ["load_step", "node_id"]:
+            raise AssertionError
 
         # extract the representative samples for the first node
         first_node_id = samples.index.get_level_values("node_id")[0]
-        samples_of_first_node = samples[samples.index.get_level_values("node_id") == first_node_id].to_numpy().flatten()
+        samples_of_first_node = (
+            samples[samples.index.get_level_values("node_id") == first_node_id]
+            .to_numpy()
+            .flatten()
+        )
 
         previous_head_index = self._head_index
 
         turn_index, _ = self._new_turns(samples_of_first_node, flush, preserve_start)
 
         # the selected samples are a list of DataFrames. Each DataFrame contains the values for all nodes
-        selected_samples = [samples[samples.index.get_level_values("load_step") == index-previous_head_index].reset_index(drop=True) \
-                            for index in turn_index]
+        selected_samples = [
+            samples[
+                samples.index.get_level_values("load_step")
+                == index - previous_head_index
+            ].reset_index(drop=True)
+            for index in turn_index
+        ]
 
         return turn_index, selected_samples
+
 
 class AbstractRecorder:
     """A common base class for rainflow recorders.
@@ -473,7 +494,7 @@ class AbstractRecorder:
             The index of the sample in its chunk.
         """
         chunk_index = np.insert(np.cumsum(self._chunks), 0, 0)
-        chunk_num = np.searchsorted(chunk_index, global_index, side='right') - 1
+        chunk_num = np.searchsorted(chunk_index, global_index, side="right") - 1
 
         return chunk_num, global_index - chunk_index[chunk_num]
 

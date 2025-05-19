@@ -17,14 +17,16 @@
 __author__ = "Benjamin Maier"
 __maintainer__ = __author__
 
-import pandas as pd
-import numpy as np
 import warnings
+
+import numpy as np
+import pandas as pd
 import scipy.optimize
 
-import pylife.strength.woehler_fkm_nonlinear
 import pylife.strength.fkm_nonlinear.parameter_calculations
+import pylife.strength.woehler_fkm_nonlinear
 from pylife.strength.fkm_nonlinear.constants import FKMNLConstants
+
 
 class DamageCalculatorPRAM:
     """This class performs the lifetime assessment according to the FKM nonlinear assessment.
@@ -75,18 +77,38 @@ class DamageCalculatorPRAM:
         self._initialize_P_RAM_Z_index()
 
         # compute bearable number of cycles
-        self._collective["N"] = np.where(self._collective["P_RAM"] >= self._P_RAM_Z,
-                                         1e3 * np.power(self._collective["P_RAM"] / self._P_RAM_Z, 1/self._component_woehler_curve_P_RAM.d_1),
-                                         1e3 * np.power(self._collective["P_RAM"] / self._P_RAM_Z, 1/self._component_woehler_curve_P_RAM.d_2))
+        self._collective["N"] = np.where(
+            self._collective["P_RAM"] >= self._P_RAM_Z,
+            1e3
+            * np.power(
+                self._collective["P_RAM"] / self._P_RAM_Z,
+                1 / self._component_woehler_curve_P_RAM.d_1,
+            ),
+            1e3
+            * np.power(
+                self._collective["P_RAM"] / self._P_RAM_Z,
+                1 / self._component_woehler_curve_P_RAM.d_2,
+            ),
+        )
 
         # compute individual damage per cycle
-        self._collective["D"] = np.where(self._collective["is_closed_hysteresis"], 1/self._collective["N"], 0.5/self._collective["N"])
+        self._collective["D"] = np.where(
+            self._collective["is_closed_hysteresis"],
+            1 / self._collective["N"],
+            0.5 / self._collective["N"],
+        )
 
         # compute cumulative damage for every node
-        self._collective["cumulative_damage"] = self._collective["D"].groupby("assessment_point_index").cumsum()
+        self._collective["cumulative_damage"] = (
+            self._collective["D"].groupby("assessment_point_index").cumsum()
+        )
 
         # compute number of cycles until damage sum is 1
-        self._n_cycles_until_damage = self._collective["cumulative_damage"].groupby("assessment_point_index").apply(lambda array: np.searchsorted(array, 1))
+        self._n_cycles_until_damage = (
+            self._collective["cumulative_damage"]
+            .groupby("assessment_point_index")
+            .apply(lambda array: np.searchsorted(array, 1))
+        )
 
     @property
     def collective(self):
@@ -99,7 +121,11 @@ class DamageCalculatorPRAM:
         The method ``compute_damage`` needs to be called beforehand."""
 
         # get maximum damage parameter
-        P_RAM_max = self._collective.loc[self._collective["run_index"]==2, "P_RAM"].groupby("assessment_point_index").max()
+        P_RAM_max = (
+            self._collective.loc[self._collective["run_index"] == 2, "P_RAM"]
+            .groupby("assessment_point_index")
+            .max()
+        )
 
         return P_RAM_max.squeeze()
 
@@ -110,7 +136,9 @@ class DamageCalculatorPRAM:
 
         # y/x = d, 1/d = x/y
 
-        fatigue_strength_limit = self._component_woehler_curve_P_RAM.fatigue_strength_limit
+        fatigue_strength_limit = (
+            self._component_woehler_curve_P_RAM.fatigue_strength_limit
+        )
 
         # remove any given index of fatigue_strength_limit which results from the assessment_parameters.G parameter
         if isinstance(fatigue_strength_limit, pd.Series):
@@ -125,24 +153,36 @@ class DamageCalculatorPRAM:
         The method ``compute_damage`` needs to be called beforehand."""
 
         # compute damage sums of both HCM runs
-        damage_sum_first_run = self._collective.loc[self._collective["run_index"]==1, "D"].groupby("assessment_point_index").sum()
-        damage_sum_second_run = self._collective.loc[self._collective["run_index"]==2, "D"].groupby("assessment_point_index").sum()
+        damage_sum_first_run = (
+            self._collective.loc[self._collective["run_index"] == 1, "D"]
+            .groupby("assessment_point_index")
+            .sum()
+        )
+        damage_sum_second_run = (
+            self._collective.loc[self._collective["run_index"] == 2, "D"]
+            .groupby("assessment_point_index")
+            .sum()
+        )
 
         # fill default values for all assessment point where there is no value
-        damage_sum_first_run = self._fill_with_default_for_missing_assessment_points(damage_sum_first_run, 0)
-        damage_sum_second_run = self._fill_with_default_for_missing_assessment_points(damage_sum_second_run, 0)
+        damage_sum_first_run = self._fill_with_default_for_missing_assessment_points(
+            damage_sum_first_run, 0
+        )
+        damage_sum_second_run = self._fill_with_default_for_missing_assessment_points(
+            damage_sum_second_run, 0
+        )
 
         # how often the second run can be repeated (after the first run) until damage
         # eq. (2.6-90)
-        x = np.where(damage_sum_first_run == 0,
-                1 / damage_sum_second_run,
-                (1 - damage_sum_first_run) / damage_sum_second_run)
+        x = np.where(
+            damage_sum_first_run == 0,
+            1 / damage_sum_second_run,
+            (1 - damage_sum_first_run) / damage_sum_second_run,
+        )
 
         # If damage sum of D=1 is reached before end of second run of HCM algorithm, set lifetime_n_times_load_sequence to 0.
         # Else the value is x + 1
-        result = np.where(self._n_cycles_until_damage < self._n_hystereses,
-                          0,
-                          x + 1)
+        result = np.where(self._n_cycles_until_damage < self._n_hystereses, 0, x + 1)
 
         # store value of x
         self._x = x
@@ -157,9 +197,11 @@ class DamageCalculatorPRAM:
         x_plus_1 = self.lifetime_n_times_load_sequence
 
         # if damage sum of D=1 is reached before end of second run of HCM algorithm
-        lifetime = np.where(self._n_cycles_until_damage < self._n_hystereses,
-                            self._n_cycles_until_damage,
-                            x_plus_1 * self._n_hystereses_run_2)
+        lifetime = np.where(
+            self._n_cycles_until_damage < self._n_hystereses,
+            self._n_cycles_until_damage,
+            x_plus_1 * self._n_hystereses_run_2,
+        )
 
         return lifetime.squeeze()
 
@@ -195,8 +237,10 @@ class DamageCalculatorPRAM:
         f_25 = constants.f_25percent_material_woehler_RAM
 
         def N_max_bearable(P_A, clip_gamma=False):
-            beta = pylife.strength.fkm_nonlinear.parameter_calculations.compute_beta(P_A)
-            log_gamma_M = (0.8*beta - 2)*0.08
+            beta = pylife.strength.fkm_nonlinear.parameter_calculations.compute_beta(
+                P_A
+            )
+            log_gamma_M = (0.8 * beta - 2) * 0.08
 
             # Note that the FKM nonlinear guideline defines a cap at 1.1 for P_RAM.
             if clip_gamma:
@@ -208,21 +252,37 @@ class DamageCalculatorPRAM:
             # Therefore, we do the woehler curve assessment again:
 
             # compute bearable number of cycles
-            P_RAM_reduced = self._P_RAM_Z * 10**(reduction_factor_P)
-            self._collective["N"] = np.where(self._collective["P_RAM"] >= P_RAM_reduced,
-                                            1e3 * np.power(self._collective["P_RAM"] / P_RAM_reduced, 1/self._component_woehler_curve_P_RAM.d_1),
-                                            1e3 * np.power(self._collective["P_RAM"] / P_RAM_reduced, 1/self._component_woehler_curve_P_RAM.d_2))
+            P_RAM_reduced = self._P_RAM_Z * 10 ** (reduction_factor_P)
+            self._collective["N"] = np.where(
+                self._collective["P_RAM"] >= P_RAM_reduced,
+                1e3
+                * np.power(
+                    self._collective["P_RAM"] / P_RAM_reduced,
+                    1 / self._component_woehler_curve_P_RAM.d_1,
+                ),
+                1e3
+                * np.power(
+                    self._collective["P_RAM"] / P_RAM_reduced,
+                    1 / self._component_woehler_curve_P_RAM.d_2,
+                ),
+            )
 
             # compute individual damage per cycle
-            self._collective["D"] = np.where(self._collective["is_closed_hysteresis"], 1/self._collective["N"], 0.5/self._collective["N"])
+            self._collective["D"] = np.where(
+                self._collective["is_closed_hysteresis"],
+                1 / self._collective["N"],
+                0.5 / self._collective["N"],
+            )
 
             return self.lifetime_n_cycles
 
         def failure_probability(N):
-
             result = scipy.optimize.minimize_scalar(
                 lambda x: (N_max_bearable(x) - N) ** 2,
-                bounds=[1e-9, 1-1e-9], method='bounded', options={'xatol': 1e-10})
+                bounds=[1e-9, 1 - 1e-9],
+                method="bounded",
+                options={"xatol": 1e-10},
+            )
 
             if result.success:
                 return result.x
@@ -239,18 +299,37 @@ class DamageCalculatorPRAM:
         # if assessment is done for multiple points at once, work with a multi-indexed data frame
         if not isinstance(self._collective.index, pd.MultiIndex):
             n_hystereses = len(self._collective)
-            self._collective.index = pd.MultiIndex.from_product([range(n_hystereses), [0]], names=["hysteresis_index", "assessment_point_index"])
+            self._collective.index = pd.MultiIndex.from_product(
+                [range(n_hystereses), [0]],
+                names=["hysteresis_index", "assessment_point_index"],
+            )
 
         # assert that the index contains the two columns "hysteresis_index" and "assessment_point_index"
-        assert self._collective.index.names == ["hysteresis_index", "assessment_point_index"]
+        if self._collective.index.names != [
+            "hysteresis_index",
+            "assessment_point_index",
+        ]:
+            raise AssertionError
 
-        assert "P_RAM" in self._collective
-        assert "is_closed_hysteresis" in self._collective
-        assert "run_index" in self._collective
+        if "P_RAM" not in self._collective:
+            raise AssertionError
+        if "is_closed_hysteresis" not in self._collective:
+            raise AssertionError
+        if "run_index" not in self._collective:
+            raise AssertionError
 
         # store some statistics about the DataFrame
-        self._n_hystereses = self._collective.groupby("assessment_point_index")["S_min"].count().values[0]
-        self._n_hystereses_run_2 = self._collective[self._collective["run_index"]==2].groupby("assessment_point_index")["S_min"].count().values[0]
+        self._n_hystereses = (
+            self._collective.groupby("assessment_point_index")["S_min"]
+            .count()
+            .values[0]
+        )
+        self._n_hystereses_run_2 = (
+            self._collective[self._collective["run_index"] == 2]
+            .groupby("assessment_point_index")["S_min"]
+            .count()
+            .values[0]
+        )
 
     def _initialize_P_RAM_Z_index(self):
         """Properly initialize P_RAM_Z if it was computed individually for every node because of a stress gradient field G.
@@ -260,11 +339,15 @@ class DamageCalculatorPRAM:
         # if P_RAM_Z is a series without multi-index
         if isinstance(self._P_RAM_Z, pd.Series):
             if not isinstance(self._P_RAM_Z.index, pd.MultiIndex):
-
-                n_hystereses = len(self._collective.index.get_level_values("hysteresis_index").unique())
+                n_hystereses = len(
+                    self._collective.index.get_level_values("hysteresis_index").unique()
+                )
                 self._P_RAM_Z = pd.Series(
-                    data = (np.ones([n_hystereses,1]) * np.array([self._P_RAM_Z])).flatten(),
-                    index = self._collective.index)
+                    data=(
+                        np.ones([n_hystereses, 1]) * np.array([self._P_RAM_Z])
+                    ).flatten(),
+                    index=self._collective.index,
+                )
 
     def _fill_with_default_for_missing_assessment_points(self, df, default_value):
         """Add rows to a series df that are not yet there, such that the result has
@@ -290,10 +373,12 @@ class DamageCalculatorPRAM:
                 2    0.312183
                 Name: stddev_log_N, dtype: float64
         """
-        assessment_point_index = self._collective.index.get_level_values("assessment_point_index").unique()
+        assessment_point_index = self._collective.index.get_level_values(
+            "assessment_point_index"
+        ).unique()
         series_with_all_rows = pd.Series(np.nan, index=assessment_point_index, name="a")
 
-        result = pd.concat([df, series_with_all_rows],axis=1)[df.name]
+        result = pd.concat([df, series_with_all_rows], axis=1)[df.name]
         result = result.fillna(default_value)
         return result
 
@@ -306,7 +391,9 @@ class DamageCalculatorPRAJ:
     This class implements the assessment procedure using the damage parameter P_RAJ.
     """
 
-    def __init__(self, collective, assessment_parameters, component_woehler_curve_P_RAJ):
+    def __init__(
+        self, collective, assessment_parameters, component_woehler_curve_P_RAJ
+    ):
         """Initialize the computation with the Woehler curve, connect a load collective and material parameters to the object.
 
         This function should be called once after initialization, before any other method is called.
@@ -359,10 +446,16 @@ class DamageCalculatorPRAJ:
         self._initialize_binning()
 
         # compute cumulative damage for every node
-        self._collective["cumulative_damage"] = self._collective["D"].groupby("assessment_point_index").cumsum()
+        self._collective["cumulative_damage"] = (
+            self._collective["D"].groupby("assessment_point_index").cumsum()
+        )
 
         # compute number of cycles until damage sum is 1, eq. (2.9-136)
-        self._n_cycles_until_damage = self._collective["cumulative_damage"].groupby("assessment_point_index").apply(lambda array: np.searchsorted(array, 1))
+        self._n_cycles_until_damage = (
+            self._collective["cumulative_damage"]
+            .groupby("assessment_point_index")
+            .apply(lambda array: np.searchsorted(array, 1))
+        )
 
         # calculate the value of self._xbar_minus_2
         self._compute_xbar_minus_2()
@@ -373,7 +466,7 @@ class DamageCalculatorPRAJ:
         # compute bearable number of cycles until crack
         self._N_bar = self._H_0 * (2 + self._xbar_minus_2)
 
-        self._x_bar = (2 + self._xbar_minus_2)
+        self._x_bar = 2 + self._xbar_minus_2
 
     @property
     def collective(self):
@@ -387,9 +480,15 @@ class DamageCalculatorPRAJ:
 
         # get maximum damage parameter
         if isinstance(self._collective.index, pd.MultiIndex):
-            P_RAJ_max = self._collective.loc[self._collective["run_index"]==2, "P_RAJ"].groupby("assessment_point_index").max()
+            P_RAJ_max = (
+                self._collective.loc[self._collective["run_index"] == 2, "P_RAJ"]
+                .groupby("assessment_point_index")
+                .max()
+            )
         else:
-            P_RAJ_max = self._collective.loc[self._collective["run_index"]==2, "P_RAJ"].max()
+            P_RAJ_max = self._collective.loc[
+                self._collective["run_index"] == 2, "P_RAJ"
+            ].max()
 
         return P_RAJ_max.squeeze()
 
@@ -398,7 +497,9 @@ class DamageCalculatorPRAJ:
         """Whether the component has infinite life.
         The method ``compute_damage`` needs to be called beforehand."""
 
-        result = self.P_RAJ_max <= self._component_woehler_curve_P_RAJ.fatigue_strength_limit
+        result = (
+            self.P_RAJ_max <= self._component_woehler_curve_P_RAJ.fatigue_strength_limit
+        )
         return result.squeeze()
 
     @property
@@ -408,9 +509,9 @@ class DamageCalculatorPRAJ:
 
         # If damage sum of D=1 is reached before end of second run of HCM algorithm, set lifetime_n_times_load_sequence to 0.
         # Else the value is x + 1
-        result = np.where(self._n_cycles_until_damage < self._n_hystereses,
-                          0,
-                          self._x_bar)
+        result = np.where(
+            self._n_cycles_until_damage < self._n_hystereses, 0, self._x_bar
+        )
         return result.squeeze()
 
     @property
@@ -419,9 +520,11 @@ class DamageCalculatorPRAJ:
         The method ``compute_damage`` needs to be called beforehand."""
 
         # if damage sum of D=1 is reached before end of second run of HCM algorithm
-        lifetime = np.where(self._n_cycles_until_damage < self._n_hystereses,
-                            self._n_cycles_until_damage,
-                            self._N_bar)
+        lifetime = np.where(
+            self._n_cycles_until_damage < self._n_hystereses,
+            self._n_cycles_until_damage,
+            self._N_bar,
+        )
 
         return lifetime.squeeze()
 
@@ -452,12 +555,14 @@ class DamageCalculatorPRAJ:
 
         constants = FKMNLConstants().for_material_group(self._assessment_parameters)
         f_25 = constants.f_25percent_material_woehler_RAJ
-        slope_woehler = abs(1/self._component_woehler_curve_P_RAJ.d)
+        slope_woehler = abs(1 / self._component_woehler_curve_P_RAJ.d)
         lifetime_n_cycles = self.lifetime_n_cycles
 
         def N_max_bearable(P_A, clip_gamma=False):
-            beta = pylife.strength.fkm_nonlinear.parameter_calculations.compute_beta(P_A)
-            log_gamma_M = (0.8*beta - 2)*0.155
+            beta = pylife.strength.fkm_nonlinear.parameter_calculations.compute_beta(
+                P_A
+            )
+            log_gamma_M = (0.8 * beta - 2) * 0.155
 
             # Note that the FKM nonlinear guideline defines a cap at 1.2 for P_RAJ.
             if clip_gamma:
@@ -466,13 +571,15 @@ class DamageCalculatorPRAJ:
             reduction_factor_P = np.log10(f_25) - log_gamma_M
             reduction_factor_N = reduction_factor_P * slope_woehler
 
-            return lifetime_n_cycles * 10**(reduction_factor_N)
+            return lifetime_n_cycles * 10 ** (reduction_factor_N)
 
         def failure_probability(N):
-
             result = scipy.optimize.minimize_scalar(
                 lambda x: (N_max_bearable(x) - N) ** 2,
-                bounds=[1e-9, 1-1e-9], method='bounded', options={'xatol': 1e-10})
+                bounds=[1e-9, 1 - 1e-9],
+                method="bounded",
+                options={"xatol": 1e-10},
+            )
 
             if result.success:
                 return result.x
@@ -489,17 +596,31 @@ class DamageCalculatorPRAJ:
         # if assessment is done for multiple points at once, work with a multi-indexed data frame
         if not isinstance(self._collective.index, pd.MultiIndex):
             n_hystereses = len(self._collective)
-            self._collective.index = pd.MultiIndex.from_product([range(n_hystereses), [0]], names=["hysteresis_index", "assessment_point_index"])
+            self._collective.index = pd.MultiIndex.from_product(
+                [range(n_hystereses), [0]],
+                names=["hysteresis_index", "assessment_point_index"],
+            )
 
         # assert that the index contains the two columns "hysteresis_index" and "assessment_point_index"
-        assert self._collective.index.names == ["hysteresis_index", "assessment_point_index"]
+        if self._collective.index.names != [
+            "hysteresis_index",
+            "assessment_point_index",
+        ]:
+            raise AssertionError
 
-        assert "run_index" in self._collective
-        assert "D" in self._collective
-        assert "P_RAJ" in self._collective
+        if "run_index" not in self._collective:
+            raise AssertionError
+        if "D" not in self._collective:
+            raise AssertionError
+        if "P_RAJ" not in self._collective:
+            raise AssertionError
 
         # store some statistics about the DataFrame
-        self._n_hystereses = self._collective.groupby("assessment_point_index")["S_min"].count().values[0]
+        self._n_hystereses = (
+            self._collective.groupby("assessment_point_index")["S_min"]
+            .count()
+            .values[0]
+        )
 
     def _initialize_binning(self):
         """
@@ -532,23 +653,31 @@ class DamageCalculatorPRAJ:
         n_bins = self._assessment_parameters.n_bins
 
         # eq. (2.9-126)
-        delta_P = 1.0/n_bins * np.log(P_RAJ_klass_max / P_RAJ_D_e)
+        delta_P = 1.0 / n_bins * np.log(P_RAJ_klass_max / P_RAJ_D_e)
 
         # initalize binned P_RAJ values with equal logarithmic class sizes
-        self._binned_P_RAJ = np.logspace(np.log10(P_RAJ_klass_max), np.log10(P_RAJ_D_e), n_bins+1)  # 201 (n_bins+1) because entry 0 is P_RAJ_class_max
+        self._binned_P_RAJ = np.logspace(
+            np.log10(P_RAJ_klass_max), np.log10(P_RAJ_D_e), n_bins + 1
+        )  # 201 (n_bins+1) because entry 0 is P_RAJ_class_max
 
         # assert that upper bin size divided by lower bin size is equal for all bins
-        log_bin_sizes = [self._binned_P_RAJ[i-1] / self._binned_P_RAJ[i] for i in range(1,n_bins+1)]
+        log_bin_sizes = [
+            self._binned_P_RAJ[i - 1] / self._binned_P_RAJ[i]
+            for i in range(1, n_bins + 1)
+        ]
 
-
-        #assert np.nanstd(log_bin_sizes) < 1e-10
+        # assert np.nanstd(log_bin_sizes) < 1e-10
         if np.nanstd(log_bin_sizes) >= 1e-10:
-            warnings.warn(f"std(log_bin_sizes) should be zero, but is {np.nanstd(log_bin_sizes)}.")
+            warnings.warn(
+                f"std(log_bin_sizes) should be zero, but is {np.nanstd(log_bin_sizes)}."
+            )
 
         # at this point, the vectorial assertions should hold, masking out nan values
 
         # class middle points, eq. (2.9.131)
-        self._binned_P_RAJ_m = (self._binned_P_RAJ[:n_bins] + self._binned_P_RAJ[1:]) / 2
+        self._binned_P_RAJ_m = (
+            self._binned_P_RAJ[:n_bins] + self._binned_P_RAJ[1:]
+        ) / 2
 
         # Now `Klassieren(P_RAJ_i, h_i, P_RAJ_m_i)`, 1 <= i <= 200   (200 is the standard value for n_bins)
         # equals (self._binned_P_RAJ[i+1], self._binned_h[i], self._binned_P_RAJ_m[i]), 0 <= i < 200.
@@ -560,38 +689,54 @@ class DamageCalculatorPRAJ:
 
         # fill binned P_RAJ values for second run of HCM algorithm
 
-        n_assessment_points = len(self._collective[self._collective.index.get_level_values("hysteresis_index")==0])
-        self._binned_h = np.zeros((n_assessment_points,n_bins))
+        n_assessment_points = len(
+            self._collective[
+                self._collective.index.get_level_values("hysteresis_index") == 0
+            ]
+        )
+        self._binned_h = np.zeros((n_assessment_points, n_bins))
         self._n_not_in_bin = np.zeros(n_assessment_points)
 
-        for index, group in self._collective[self._collective.run_index == 2].groupby("hysteresis_index"):
-
+        for index, group in self._collective[self._collective.run_index == 2].groupby(
+            "hysteresis_index"
+        ):
             # if we have a different stress gradient for every node, the bin contains different values for each node
             if len(self._binned_P_RAJ.shape) == 2:
-
                 # this is the vectorial case where the stress gradient is different for every node,
                 # every bin contains one value for every node
 
                 def find(row):
-                    return n_bins - np.searchsorted(np.flip(self._binned_P_RAJ, axis=0)[:,int(row["index"])], row.P_RAJ)
+                    return n_bins - np.searchsorted(
+                        np.flip(self._binned_P_RAJ, axis=0)[:, int(row["index"])],
+                        row.P_RAJ,
+                    )
 
-                i = group.reset_index().reset_index()[["index","P_RAJ"]].apply(find, axis=1)
+                i = (
+                    group.reset_index()
+                    .reset_index()[["index", "P_RAJ"]]
+                    .apply(find, axis=1)
+                )
 
             else:
                 # scalar case, each bin contains one value
 
                 # find class index of binned P_RAJ value
-                i = group.P_RAJ.apply(lambda P_RAJ: n_bins - np.searchsorted(np.flip(self._binned_P_RAJ, axis=0), P_RAJ))
+                i = group.P_RAJ.apply(
+                    lambda P_RAJ: n_bins
+                    - np.searchsorted(np.flip(self._binned_P_RAJ, axis=0), P_RAJ)
+                )
 
             # here, we have:
             #   self._binned_P_RAJ[i] <= P_RAJ <= self._binned_P_RAJ[i+1]
 
             # if P_RAJ > P_RAJ_D_e:
             # increment binned at the corresponding class, equivalent to self._binned_h[i] += 1
-            increment = np.zeros((n_assessment_points,n_bins+1))
-            increment[np.array(range(n_assessment_points)), i] = np.where(group.reset_index(drop=True).P_RAJ > P_RAJ_D_e, 1, 0)
+            increment = np.zeros((n_assessment_points, n_bins + 1))
+            increment[np.array(range(n_assessment_points)), i] = np.where(
+                group.reset_index(drop=True).P_RAJ > P_RAJ_D_e, 1, 0
+            )
 
-            self._binned_h = self._binned_h + increment[:,:n_bins]
+            self._binned_h = self._binned_h + increment[:, :n_bins]
 
             # if P_RAJ <= P_RAJ_D_e:
             # increment n_not_in_bin
@@ -601,11 +746,12 @@ class DamageCalculatorPRAJ:
         self._H_0 = np.sum(self._binned_h, axis=1) + self._n_not_in_bin
 
     def _compute_xbar_minus_2(self):
-        """Compute the value of self._xbar_minus_2, described by eq. (2.9-138)
-        """
+        """Compute the value of self._xbar_minus_2, described by eq. (2.9-138)"""
 
         n_bins = self._assessment_parameters.n_bins
-        last_P_RAJ_D = self._collective["P_RAJ_D"].groupby("assessment_point_index").last()
+        last_P_RAJ_D = (
+            self._collective["P_RAJ_D"].groupby("assessment_point_index").last()
+        )
 
         # find corresponding class `q` for value last_P_RAJ_D
 
@@ -613,28 +759,44 @@ class DamageCalculatorPRAJ:
         if len(self._binned_P_RAJ.shape) == 2:
 
             def find(row):
-                return n_bins - np.searchsorted(np.flip(self._binned_P_RAJ, axis=0)[:,int(row["index"])], row.P_RAJ_D)
+                return n_bins - np.searchsorted(
+                    np.flip(self._binned_P_RAJ, axis=0)[:, int(row["index"])],
+                    row.P_RAJ_D,
+                )
 
             q = last_P_RAJ_D.reset_index().reset_index().apply(find, axis=1)
 
         else:
             # scalar case, each bin contains one value
-            q = last_P_RAJ_D.apply(lambda P_RAJ: n_bins - np.searchsorted(np.flip(self._binned_P_RAJ), P_RAJ))
+            q = last_P_RAJ_D.apply(
+                lambda P_RAJ: n_bins
+                - np.searchsorted(np.flip(self._binned_P_RAJ), P_RAJ)
+            )
 
         # here, we have:
         #   self._binned_P_RAJ[q] <= last_P_RAJ_D <= self._binned_P_RAJ[q+1]
         # and self._binned_P_RAJ_m[q] is the corresponding center point
 
         # standard calculation of m according to eq. (2.8-60), (2.9-117)
-        m = -1/self._assessment_parameters.d_RAJ
+        m = -1 / self._assessment_parameters.d_RAJ
 
         # definition of the function f of eq. (2.9-139)
         def f(j):
-            denominator = np.power(self._assessment_parameters.a_0, 1-m) - np.power(self._assessment_parameters.a_end, 1-m)
-            bracket = self._P_RAJ_D_0 / self._binned_P_RAJ_m[j] \
-                * (self._assessment_parameters.a_0 + self._assessment_parameters.l_star \
-                   * (1 - self._binned_P_RAJ_m[j]/self._P_RAJ_D_0))
-            nominator = np.power(self._assessment_parameters.a_0, 1-m) - np.power(bracket, 1-m)
+            denominator = np.power(self._assessment_parameters.a_0, 1 - m) - np.power(
+                self._assessment_parameters.a_end, 1 - m
+            )
+            bracket = (
+                self._P_RAJ_D_0
+                / self._binned_P_RAJ_m[j]
+                * (
+                    self._assessment_parameters.a_0
+                    + self._assessment_parameters.l_star
+                    * (1 - self._binned_P_RAJ_m[j] / self._P_RAJ_D_0)
+                )
+            )
+            nominator = np.power(self._assessment_parameters.a_0, 1 - m) - np.power(
+                bracket, 1 - m
+            )
             return nominator / denominator
 
         # store internal variables
@@ -651,31 +813,39 @@ class DamageCalculatorPRAJ:
 
         # iterate from j = q to 198 for all assessment points at once.
         # The values where j is smaller than q are masked out at the end.
-        for j in range(min(q), n_bins-1):
-
+        for j in range(min(q), n_bins - 1):
             # compute sum in denominator, only one new summand is added in this iteration,
             # we can avoid doing the complete inner sum over i for every new j
-            for i in range(previous_j, j+1):
-                P_RAJ_m = self._binned_P_RAJ_m[i]    # this corresponds to the range [self._binned_P_RAJ[i], self._binned_P_RAJ[i+1]]
+            for i in range(previous_j, j + 1):
+                P_RAJ_m = self._binned_P_RAJ_m[
+                    i
+                ]  # this corresponds to the range [self._binned_P_RAJ[i], self._binned_P_RAJ[i+1]]
 
                 # eq. (2.9-140)
-                #N = (P_RAJ_m / self._component_woehler_curve_P_RAJ.P_RAJ_Z) ** (1/self._component_woehler_curve_P_RAJ.d)
-                N = self._component_woehler_curve_P_RAJ.calc_N(P_RAJ_m, P_RAJ_D=last_P_RAJ_D)
+                # N = (P_RAJ_m / self._component_woehler_curve_P_RAJ.P_RAJ_Z) ** (1/self._component_woehler_curve_P_RAJ.d)
+                N = self._component_woehler_curve_P_RAJ.calc_N(
+                    P_RAJ_m, P_RAJ_D=last_P_RAJ_D
+                )
 
-                damage = np.where(P_RAJ_m > last_P_RAJ_D,
-                                    self._binned_h[:,i] / N,
-
-                                    # for N = inf (infinite life), damage is zero
-                                    0)
+                damage = np.where(
+                    P_RAJ_m > last_P_RAJ_D,
+                    self._binned_h[:, i] / N,
+                    # for N = inf (infinite life), damage is zero
+                    0,
+                )
 
                 denominator += damage
 
             previous_j = j
 
             # silence warning "divide by zero encountered in true_divide". This happens for denominator=0, but then it will use the second branch with np.inf anyways
-            with np.errstate(divide='ignore'):
-                self._xbar_minus_2 += np.where(j >= q,
-                                           np.where(abs(denominator) > 1e-13,
-                                                    (f(j+1) - f(j)) / denominator,
-                                                    np.inf),
-                                           0)
+            with np.errstate(divide="ignore"):
+                self._xbar_minus_2 += np.where(
+                    j >= q,
+                    np.where(
+                        abs(denominator) > 1e-13,
+                        (f(j + 1) - f(j)) / denominator,
+                        np.inf,
+                    ),
+                    0,
+                )

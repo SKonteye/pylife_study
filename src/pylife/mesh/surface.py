@@ -23,9 +23,9 @@ import pandas as pd
 from .meshsignal import Mesh
 
 
-@pd.api.extensions.register_dataframe_accessor('surface_3D')
+@pd.api.extensions.register_dataframe_accessor("surface_3D")
 class Surface3D(Mesh):
-    '''Determines nodes at the surface in a 3D mesh.
+    """Determines nodes at the surface in a 3D mesh.
     It also computes the outward normal vectors of the surface.
 
     Raises
@@ -35,7 +35,7 @@ class Surface3D(Mesh):
     AttributeError
         if the index of the DataFrame is not a two level MultiIndex
         with the names `node_id` and `element_id`
-    '''
+    """
 
     def _solid_angle(self, df):
         n = len(df)
@@ -56,19 +56,19 @@ class Surface3D(Mesh):
             r1 /= np.broadcast_to(np.linalg.norm(r1, axis=1), (3, n)).T
             r2 /= np.broadcast_to(np.linalg.norm(r2, axis=1), (3, n)).T
 
-            a = np.arccos(np.sum(r0*r1, axis=1))
-            b = np.arccos(np.sum(r0*r2, axis=1))
-            c = np.arccos(np.sum(r1*r2, axis=1))
+            a = np.arccos(np.sum(r0 * r1, axis=1))
+            b = np.arccos(np.sum(r0 * r2, axis=1))
+            c = np.arccos(np.sum(r1 * r2, axis=1))
 
-            s = (a+b+c) / 2
+            s = (a + b + c) / 2
 
-            sinA = np.sqrt((np.sin(s-b) * np.sin(s-c)) / (np.sin(b)*np.sin(c)))
-            sinB = np.sqrt((np.sin(s-a) * np.sin(s-c)) / (np.sin(a)*np.sin(c)))
-            sinC = np.sqrt((np.sin(s-b) * np.sin(s-a)) / (np.sin(b)*np.sin(a)))
+            sinA = np.sqrt((np.sin(s - b) * np.sin(s - c)) / (np.sin(b) * np.sin(c)))
+            sinB = np.sqrt((np.sin(s - a) * np.sin(s - c)) / (np.sin(a) * np.sin(c)))
+            sinC = np.sqrt((np.sin(s - b) * np.sin(s - a)) / (np.sin(b) * np.sin(a)))
 
-            cosA = np.sqrt((np.sin(s) * np.sin(s-a)) / (np.sin(b)*np.sin(c)))
-            cosB = np.sqrt((np.sin(s) * np.sin(s-b)) / (np.sin(b)*np.sin(c)))
-            cosC = np.sqrt((np.sin(s) * np.sin(s-c)) / (np.sin(b)*np.sin(c)))
+            cosA = np.sqrt((np.sin(s) * np.sin(s - a)) / (np.sin(b) * np.sin(c)))
+            cosB = np.sqrt((np.sin(s) * np.sin(s - b)) / (np.sin(b) * np.sin(c)))
+            cosC = np.sqrt((np.sin(s) * np.sin(s - c)) / (np.sin(b) * np.sin(c)))
 
         # make large values to 1
         sinA = np.minimum(sinA, 1.0)
@@ -110,8 +110,8 @@ class Surface3D(Mesh):
     def _determine_is_at_surface(self):
         df = (
             self.coordinates
-            #.reorder_levels(["element_id", "node_id"])
-            #.sort_index(level="element_id", sort_remaining=False)
+            # .reorder_levels(["element_id", "node_id"])
+            # .sort_index(level="element_id", sort_remaining=False)
             .assign(node_id=self._obj.index.get_level_values("node_id"))
         )
         # add two other nodes for every node
@@ -147,12 +147,12 @@ class Surface3D(Mesh):
             df1.groupby(["node_id"]).sum().rename(columns={"E": "Esum"})["Esum"]
         )
 
-        df3.loc[:, "is_at_surface"] = df3["Esum"] < 4*np.pi-1e-5
+        df3.loc[:, "is_at_surface"] = df3["Esum"] < 4 * np.pi - 1e-5
 
         return df3
 
     def is_at_surface(self):
-        ''' Determines for every point in the mesh if it is at the mesh's surface.
+        """Determines for every point in the mesh if it is at the mesh's surface.
 
         Example usage:
 
@@ -174,10 +174,13 @@ class Surface3D(Mesh):
         is_at_surface : pd.Series
             A series with the same index as the given DataFrame, indicating
             whether the node is at a surface of the component or not.
-        '''
-        assert "x" in self._obj
-        assert "y" in self._obj
-        assert "z" in self._obj
+        """
+        if "x" not in self._obj:
+            raise AssertionError
+        if "y" not in self._obj:
+            raise AssertionError
+        if "z" not in self._obj:
+            raise AssertionError
 
         # extract only the needed columns, order and sort multi-index
         result = self._determine_is_at_surface()
@@ -185,7 +188,7 @@ class Surface3D(Mesh):
         return result["is_at_surface"]
 
     def is_at_surface_with_normals(self):
-        ''' Determines for every point in the mesh if it is at the mesh's surface,
+        """Determines for every point in the mesh if it is at the mesh's surface,
         additionally calculate the outward normals.
 
         Example usage:
@@ -211,13 +214,15 @@ class Surface3D(Mesh):
             The column is_at_surface determines whether the node is at a surface
             of the component or not. If at the surface, the other columns specify
             the outward normal vector at this point.
-        '''
+        """
 
         df = self._determine_is_at_surface()
 
         df_at_surface = df[df["is_at_surface"]].reset_index("node_id")
 
-        d = df_at_surface.merge(df_at_surface, on="element_id", how="left", suffixes=["_n0", "_n1"])
+        d = df_at_surface.merge(
+            df_at_surface, on="element_id", how="left", suffixes=["_n0", "_n1"]
+        )
         d = d[d["node_id_n0"] != d["node_id_n1"]]
 
         groups = d.groupby(["element_id", "node_id_n0"], group_keys=True)
@@ -242,6 +247,8 @@ class Surface3D(Mesh):
         )
         df_with_normals.index.names = ["element_id", "node_id"]
 
-        df_result = df.join(df_with_normals)[["is_at_surface", "normal_x", "normal_y", "normal_z"]]
+        df_result = df.join(df_with_normals)[
+            ["is_at_surface", "normal_x", "normal_y", "normal_z"]
+        ]
 
         return df_result
