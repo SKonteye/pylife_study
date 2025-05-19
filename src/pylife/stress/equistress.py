@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 
 Equivalent Stresses
@@ -41,6 +40,7 @@ __maintainer__ = "Johannes Mueller"
 
 import numpy as np
 import pandas as pd
+
 from pylife.stress import stresssignal
 
 
@@ -69,9 +69,7 @@ def eigenval(s11, s22, s33, s12, s13, s23):
         Shape is (length of components, 3) or simply 3 if components are single
         values.
     """
-    a = np.array([[s11, s12, s13],
-                  [s12, s22, s23],
-                  [s13, s23, s33]]).T
+    a = np.array([[s11, s12, s13], [s12, s22, s23], [s13, s23, s33]]).T
     return np.linalg.eigvalsh(a)
 
 
@@ -95,8 +93,7 @@ def _sign_trace(s11, s22, s33):
     s11 = np.array(s11)
     s22 = np.array(s22)
     s33 = np.array(s33)
-    if not (s11.shape == s22.shape and
-            s11.shape == s33.shape):
+    if not (s11.shape == s22.shape and s11.shape == s33.shape):
         raise AssertionError("Components' shape is not consistent.")
     sgn = np.sign(s11 + s22 + s33)  # calculate sign of trace, careful: sign of 0 is 0
     if sgn.ndim == 0:
@@ -138,7 +135,9 @@ def _sign_abs_max_principal(s11, s22, s33, s12, s13, s23):
     sgn = np.sign(w_max + w_min)
     # sign of 0 is 0, replace it with 1
     zero_sign_bool = np.array(sgn == 0, dtype=int)
-    sgn = sgn + zero_sign_bool  # works for all dimensions, no need to differentiate value from array.
+    sgn = (
+        sgn + zero_sign_bool
+    )  # works for all dimensions, no need to differentiate value from array.
     return sgn
 
 
@@ -224,7 +223,9 @@ def signed_tresca_abs_max_principal(s11, s22, s33, s12, s13, s23):
     numpy.ndarray:
         Signed Tresca equivalent stress. Shape is the same as the components.
     """
-    return _sign_abs_max_principal(s11, s22, s33, s12, s13, s23) * tresca(s11, s22, s33, s12, s13, s23)
+    return _sign_abs_max_principal(s11, s22, s33, s12, s13, s23) * tresca(
+        s11, s22, s33, s12, s13, s23
+    )
 
 
 def abs_max_principal(s11, s22, s33, s12, s13, s23):
@@ -374,16 +375,24 @@ def mises(s11, s22, s33, s12, s13, s23):
     s13 = np.array(s13)
     s23 = np.array(s23)
 
-    if not (s11.shape == s22.shape and
-            s11.shape == s33.shape and
-            s11.shape == s12.shape and
-            s11.shape == s13.shape and
-            s11.shape == s23.shape):
+    if not (
+        s11.shape == s22.shape
+        and s11.shape == s33.shape
+        and s11.shape == s12.shape
+        and s11.shape == s13.shape
+        and s11.shape == s23.shape
+    ):
         raise AssertionError("Components' shape is not consistent.")
 
-    mises_stress = np.sqrt(s11 ** 2 + s22 ** 2 + s33 ** 2
-                           - s11 * s22 - s11 * s33 - s22 * s33
-                           + 3 * (s12 ** 2 + s13 ** 2 + s23 ** 2))
+    mises_stress = np.sqrt(
+        s11**2
+        + s22**2
+        + s33**2
+        - s11 * s22
+        - s11 * s33
+        - s22 * s33
+        + 3 * (s12**2 + s13**2 + s23**2)
+    )
     return mises_stress
 
 
@@ -438,100 +447,153 @@ def signed_mises_abs_max_principal(s11, s22, s33, s12, s13, s23):
     numpy.ndarray:
         Signed von Mises equivalent stress. Shape is the same as the components.
     """
-    return _sign_abs_max_principal(s11, s22, s33, s12, s13, s23) * mises(s11, s22, s33, s12, s13, s23)
+    return _sign_abs_max_principal(s11, s22, s33, s12, s13, s23) * mises(
+        s11, s22, s33, s12, s13, s23
+    )
 
 
 @pd.api.extensions.register_dataframe_accessor("equistress")
 class StressTensorEquistress(stresssignal.StressTensorVoigt):
     def tresca(self):
-        return pd.Series(tresca(s11=self._obj['S11'].to_numpy(),
-                                s22=self._obj['S22'].to_numpy(),
-                                s33=self._obj['S33'].to_numpy(),
-                                s12=self._obj['S12'].to_numpy(),
-                                s13=self._obj['S13'].to_numpy(),
-                                s23=self._obj['S23'].to_numpy()),
-                         name='tresca', index=self._obj.index)
+        return pd.Series(
+            tresca(
+                s11=self._obj["S11"].to_numpy(),
+                s22=self._obj["S22"].to_numpy(),
+                s33=self._obj["S33"].to_numpy(),
+                s12=self._obj["S12"].to_numpy(),
+                s13=self._obj["S13"].to_numpy(),
+                s23=self._obj["S23"].to_numpy(),
+            ),
+            name="tresca",
+            index=self._obj.index,
+        )
 
     def signed_tresca_trace(self):
-        return pd.Series(signed_tresca_trace(s11=self._obj['S11'].to_numpy(),
-                                             s22=self._obj['S22'].to_numpy(),
-                                             s33=self._obj['S33'].to_numpy(),
-                                             s12=self._obj['S12'].to_numpy(),
-                                             s13=self._obj['S13'].to_numpy(),
-                                             s23=self._obj['S23'].to_numpy()),
-                         name='signed_tresca_trace', index=self._obj.index)
+        return pd.Series(
+            signed_tresca_trace(
+                s11=self._obj["S11"].to_numpy(),
+                s22=self._obj["S22"].to_numpy(),
+                s33=self._obj["S33"].to_numpy(),
+                s12=self._obj["S12"].to_numpy(),
+                s13=self._obj["S13"].to_numpy(),
+                s23=self._obj["S23"].to_numpy(),
+            ),
+            name="signed_tresca_trace",
+            index=self._obj.index,
+        )
 
     def signed_tresca_abs_max_principal(self):
-        return pd.Series(signed_tresca_abs_max_principal(s11=self._obj['S11'].to_numpy(),
-                                                         s22=self._obj['S22'].to_numpy(),
-                                                         s33=self._obj['S33'].to_numpy(),
-                                                         s12=self._obj['S12'].to_numpy(),
-                                                         s13=self._obj['S13'].to_numpy(),
-                                                         s23=self._obj['S23'].to_numpy()),
-                         name='signed_tresca_abs_max_principal', index=self._obj.index)
+        return pd.Series(
+            signed_tresca_abs_max_principal(
+                s11=self._obj["S11"].to_numpy(),
+                s22=self._obj["S22"].to_numpy(),
+                s33=self._obj["S33"].to_numpy(),
+                s12=self._obj["S12"].to_numpy(),
+                s13=self._obj["S13"].to_numpy(),
+                s23=self._obj["S23"].to_numpy(),
+            ),
+            name="signed_tresca_abs_max_principal",
+            index=self._obj.index,
+        )
 
     def principals(self):
-        all_princ = eigenval(s11=self._obj['S11'].to_numpy(),   # ascending order (numpy.eigvalsh)
-                             s22=self._obj['S22'].to_numpy(),
-                             s33=self._obj['S33'].to_numpy(),
-                             s12=self._obj['S12'].to_numpy(),
-                             s13=self._obj['S13'].to_numpy(),
-                             s23=self._obj['S23'].to_numpy())
-        return pd.DataFrame({'min_principal': all_princ[...,0],
-                             'med_principal': all_princ[...,1],
-                             'max_principal': all_princ[...,2]},
-                             index=self._obj.index)
+        all_princ = eigenval(
+            s11=self._obj["S11"].to_numpy(),  # ascending order (numpy.eigvalsh)
+            s22=self._obj["S22"].to_numpy(),
+            s33=self._obj["S33"].to_numpy(),
+            s12=self._obj["S12"].to_numpy(),
+            s13=self._obj["S13"].to_numpy(),
+            s23=self._obj["S23"].to_numpy(),
+        )
+        return pd.DataFrame(
+            {
+                "min_principal": all_princ[..., 0],
+                "med_principal": all_princ[..., 1],
+                "max_principal": all_princ[..., 2],
+            },
+            index=self._obj.index,
+        )
 
     def abs_max_principal(self):
-        return pd.Series(abs_max_principal(s11=self._obj['S11'].to_numpy(),
-                                           s22=self._obj['S22'].to_numpy(),
-                                           s33=self._obj['S33'].to_numpy(),
-                                           s12=self._obj['S12'].to_numpy(),
-                                           s13=self._obj['S13'].to_numpy(),
-                                           s23=self._obj['S23'].to_numpy()),
-                         name='abs_max_principal', index=self._obj.index)
+        return pd.Series(
+            abs_max_principal(
+                s11=self._obj["S11"].to_numpy(),
+                s22=self._obj["S22"].to_numpy(),
+                s33=self._obj["S33"].to_numpy(),
+                s12=self._obj["S12"].to_numpy(),
+                s13=self._obj["S13"].to_numpy(),
+                s23=self._obj["S23"].to_numpy(),
+            ),
+            name="abs_max_principal",
+            index=self._obj.index,
+        )
 
     def max_principal(self):
-        return pd.Series(max_principal(s11=self._obj['S11'].to_numpy(),
-                                       s22=self._obj['S22'].to_numpy(),
-                                       s33=self._obj['S33'].to_numpy(),
-                                       s12=self._obj['S12'].to_numpy(),
-                                       s13=self._obj['S13'].to_numpy(),
-                                       s23=self._obj['S23'].to_numpy()),
-                         name='max_principal', index=self._obj.index)
+        return pd.Series(
+            max_principal(
+                s11=self._obj["S11"].to_numpy(),
+                s22=self._obj["S22"].to_numpy(),
+                s33=self._obj["S33"].to_numpy(),
+                s12=self._obj["S12"].to_numpy(),
+                s13=self._obj["S13"].to_numpy(),
+                s23=self._obj["S23"].to_numpy(),
+            ),
+            name="max_principal",
+            index=self._obj.index,
+        )
 
     def min_principal(self):
-        return pd.Series(min_principal(s11=self._obj['S11'].to_numpy(),
-                                       s22=self._obj['S22'].to_numpy(),
-                                       s33=self._obj['S33'].to_numpy(),
-                                       s12=self._obj['S12'].to_numpy(),
-                                       s13=self._obj['S13'].to_numpy(),
-                                       s23=self._obj['S23'].to_numpy()),
-                         name='min_principal', index=self._obj.index)
+        return pd.Series(
+            min_principal(
+                s11=self._obj["S11"].to_numpy(),
+                s22=self._obj["S22"].to_numpy(),
+                s33=self._obj["S33"].to_numpy(),
+                s12=self._obj["S12"].to_numpy(),
+                s13=self._obj["S13"].to_numpy(),
+                s23=self._obj["S23"].to_numpy(),
+            ),
+            name="min_principal",
+            index=self._obj.index,
+        )
 
     def mises(self):
-        return pd.Series(mises(s11=self._obj['S11'].to_numpy(),
-                               s22=self._obj['S22'].to_numpy(),
-                               s33=self._obj['S33'].to_numpy(),
-                               s12=self._obj['S12'].to_numpy(),
-                               s13=self._obj['S13'].to_numpy(),
-                               s23=self._obj['S23'].to_numpy()),
-                         name='mises', index=self._obj.index)
+        return pd.Series(
+            mises(
+                s11=self._obj["S11"].to_numpy(),
+                s22=self._obj["S22"].to_numpy(),
+                s33=self._obj["S33"].to_numpy(),
+                s12=self._obj["S12"].to_numpy(),
+                s13=self._obj["S13"].to_numpy(),
+                s23=self._obj["S23"].to_numpy(),
+            ),
+            name="mises",
+            index=self._obj.index,
+        )
 
     def signed_mises_trace(self):
-        return pd.Series(signed_mises_trace(s11=self._obj['S11'].to_numpy(),
-                                            s22=self._obj['S22'].to_numpy(),
-                                            s33=self._obj['S33'].to_numpy(),
-                                            s12=self._obj['S12'].to_numpy(),
-                                            s13=self._obj['S13'].to_numpy(),
-                                            s23=self._obj['S23'].to_numpy()),
-                         name='signed_mises_trace', index=self._obj.index)
+        return pd.Series(
+            signed_mises_trace(
+                s11=self._obj["S11"].to_numpy(),
+                s22=self._obj["S22"].to_numpy(),
+                s33=self._obj["S33"].to_numpy(),
+                s12=self._obj["S12"].to_numpy(),
+                s13=self._obj["S13"].to_numpy(),
+                s23=self._obj["S23"].to_numpy(),
+            ),
+            name="signed_mises_trace",
+            index=self._obj.index,
+        )
 
     def signed_mises_abs_max_principal(self):
-        return pd.Series(signed_mises_abs_max_principal(s11=self._obj['S11'].to_numpy(),
-                                                        s22=self._obj['S22'].to_numpy(),
-                                                        s33=self._obj['S33'].to_numpy(),
-                                                        s12=self._obj['S12'].to_numpy(),
-                                                        s13=self._obj['S13'].to_numpy(),
-                                                        s23=self._obj['S23'].to_numpy()),
-                         name='signed_mises_abs_max_principal', index=self._obj.index)
+        return pd.Series(
+            signed_mises_abs_max_principal(
+                s11=self._obj["S11"].to_numpy(),
+                s22=self._obj["S22"].to_numpy(),
+                s33=self._obj["S33"].to_numpy(),
+                s12=self._obj["S12"].to_numpy(),
+                s13=self._obj["S13"].to_numpy(),
+                s23=self._obj["S23"].to_numpy(),
+            ),
+            name="signed_mises_abs_max_principal",
+            index=self._obj.index,
+        )
