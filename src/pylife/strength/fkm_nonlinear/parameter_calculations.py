@@ -71,7 +71,8 @@ def calculate_cyclic_assessment_parameters(assessment_parameters_):
 
     """
     assessment_parameters = assessment_parameters_.copy()
-    assert "R_m" in assessment_parameters
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
@@ -122,8 +123,10 @@ def calculate_material_woehler_parameters_P_RAM(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "P_A" in assessment_parameters
-    assert "R_m" in assessment_parameters
+    if "P_A" not in assessment_parameters:
+        raise AssertionError
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
@@ -196,8 +199,10 @@ def calculate_material_woehler_parameters_P_RAJ(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "P_A" in assessment_parameters
-    assert "R_m" in assessment_parameters
+    if "P_A" not in assessment_parameters:
+        raise AssertionError
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
@@ -400,14 +405,18 @@ def calculate_roughness_component_woehler_parameters_P_RAM(assessment_parameters
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "gamma_M_RAM" in assessment_parameters
-    assert "P_RAM_Z_WS" in assessment_parameters
-    assert "P_RAM_D_WS_rau" in assessment_parameters
+    if "gamma_M_RAM" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAM_Z_WS" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAM_D_WS_rau" not in assessment_parameters:
+        raise AssertionError
 
     # set n_P only if it should be added (for the surface point in FKM nonlinear roughness & surface layer)
     n_P = 1
     if include_n_P:
-        assert "n_P" in assessment_parameters
+        if "n_P" not in assessment_parameters:
+            raise AssertionError
         n_P = assessment_parameters.n_P
 
     # calculate first knee point of component Woehler curve, eq. (2.5-25) in the FKM nonlinear guideline without roughness
@@ -467,14 +476,18 @@ def calculate_roughness_component_woehler_parameters_P_RAJ(assessment_parameters
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "gamma_M_RAJ" in assessment_parameters
-    assert "P_RAJ_Z_WS" in assessment_parameters
-    assert "P_RAJ_D_WS_rau" in assessment_parameters
+    if "gamma_M_RAJ" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAJ_Z_WS" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAJ_D_WS_rau" not in assessment_parameters:
+        raise AssertionError
 
     # set n_P only if it should be added (for the surface point in FKM nonlinear roughness & surface layer)
     n_P = 1
     if include_n_P:
-        assert "n_P" in assessment_parameters
+        if "n_P" not in assessment_parameters:
+            raise AssertionError
         n_P = assessment_parameters.n_P
 
     # calculations for P_RAJ of component Woehler curve
@@ -531,10 +544,14 @@ def calculate_nonlocal_parameters(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "A_ref" in assessment_parameters
-    assert "A_sigma" in assessment_parameters
-    assert "G" in assessment_parameters
-    assert "R_m" in assessment_parameters
+    if "A_ref" not in assessment_parameters:
+        raise AssertionError
+    if "A_sigma" not in assessment_parameters:
+        raise AssertionError
+    if "G" not in assessment_parameters:
+        raise AssertionError
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
@@ -598,8 +615,10 @@ def calculate_roughness_parameter(assessment_parameters_):
         print(f"The parameter `K_RP` is already set to {assessment_parameters.K_RP}, not using the FKM formula.")
         return assessment_parameters
 
-    assert "R_m" in assessment_parameters
-    assert "R_z" in assessment_parameters
+    if "R_m" not in assessment_parameters:
+        raise AssertionError
+    if "R_z" not in assessment_parameters:
+        raise AssertionError
 
     # select set of constants according to given material group
     constants = FKMNLConstants().for_material_group(assessment_parameters)
@@ -675,10 +694,12 @@ def calculate_failure_probability_factor_P_RAM(assessment_parameters_):
     assessment_parameters = assessment_parameters_.copy()
 
     if "beta" not in assessment_parameters:
-        assert "P_A" in assessment_parameters
+        if "P_A" not in assessment_parameters:
+            raise AssertionError
 
         P_A = assessment_parameters.P_A
-        assert P_A > 0
+        if P_A <= 0:
+            raise AssertionError
 
         assessment_parameters["beta"] = compute_beta(assessment_parameters.P_A)
 
@@ -726,10 +747,12 @@ def calculate_failure_probability_factor_P_RAJ(assessment_parameters_):
     assessment_parameters = assessment_parameters_.copy()
 
     if "beta" not in assessment_parameters:
-        assert "P_A" in assessment_parameters
+        if "P_A" not in assessment_parameters:
+            raise AssertionError
 
         P_A = assessment_parameters.P_A
-        assert P_A > 0
+        if P_A <= 0:
+            raise AssertionError
 
         assessment_parameters["beta"] = compute_beta(assessment_parameters.P_A)
 
@@ -788,10 +811,14 @@ def calculate_component_woehler_parameters_P_RAM(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "gamma_M_RAM" in assessment_parameters
-    assert "n_P" in assessment_parameters
-    assert "K_RP" in assessment_parameters
-    assert "P_RAM_Z_WS" in assessment_parameters
+    if "gamma_M_RAM" not in assessment_parameters:
+        raise AssertionError
+    if "n_P" not in assessment_parameters:
+        raise AssertionError
+    if "K_RP" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAM_Z_WS" not in assessment_parameters:
+        raise AssertionError
 
     # eq. (2.5-24)
     assessment_parameters["f_RAM"] = assessment_parameters.gamma_M_RAM / (assessment_parameters.n_P * assessment_parameters.K_RP)
@@ -849,11 +876,16 @@ def calculate_component_woehler_parameters_P_RAJ(assessment_parameters_):
     """
     assessment_parameters = assessment_parameters_.copy()
 
-    assert "gamma_M_RAJ" in assessment_parameters
-    assert "n_P" in assessment_parameters
-    assert "K_RP" in assessment_parameters
-    assert "P_RAJ_Z_WS" in assessment_parameters
-    assert "P_RAJ_D_WS" in assessment_parameters
+    if "gamma_M_RAJ" not in assessment_parameters:
+        raise AssertionError
+    if "n_P" not in assessment_parameters:
+        raise AssertionError
+    if "K_RP" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAJ_Z_WS" not in assessment_parameters:
+        raise AssertionError
+    if "P_RAJ_D_WS" not in assessment_parameters:
+        raise AssertionError
 
     # eq. (2.9-24) or eq. (2.8-22)
     assessment_parameters["f_RAJ"] = assessment_parameters.gamma_M_RAJ / (assessment_parameters.n_P**2 * assessment_parameters.K_RP**2)

@@ -236,9 +236,9 @@ def _assert_G_is_in_correct_format(assessment_parameters):
     """
 
     # check that gradient G is in the correct format
-    assert isinstance(assessment_parameters.G, float) \
-        or (isinstance(assessment_parameters.G, pd.Series) and not isinstance(assessment_parameters.G.index, pd.MultiIndex)), \
-        "stress gradient G is in a wrong format (should be either float or pd.Series indexed by node)"
+    if not (isinstance(assessment_parameters.G, float) \
+        or (isinstance(assessment_parameters.G, pd.Series) and not isinstance(assessment_parameters.G.index, pd.MultiIndex))):
+        raise AssertionError("stress gradient G is in a wrong format (should be either float or pd.Series indexed by node)")
 
 
 def _check_K_p_is_in_range(assessment_parameters):
@@ -247,8 +247,8 @@ def _check_K_p_is_in_range(assessment_parameters):
     """
 
     # check that gradient G is in the correct format
-    assert assessment_parameters.K_p >= 1, \
-        "K_p should be at least 1"
+    if assessment_parameters.K_p < 1:
+        raise AssertionError("K_p should be at least 1")
 
     if assessment_parameters.K_p == 1:
         print("Note, K_p is set to 1 which means only P_RAM can be calculated. "

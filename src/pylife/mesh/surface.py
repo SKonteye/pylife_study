@@ -175,9 +175,12 @@ class Surface3D(Mesh):
             A series with the same index as the given DataFrame, indicating
             whether the node is at a surface of the component or not.
         '''
-        assert "x" in self._obj
-        assert "y" in self._obj
-        assert "z" in self._obj
+        if "x" not in self._obj:
+            raise AssertionError
+        if "y" not in self._obj:
+            raise AssertionError
+        if "z" not in self._obj:
+            raise AssertionError
 
         # extract only the needed columns, order and sort multi-index
         result = self._determine_is_at_surface()

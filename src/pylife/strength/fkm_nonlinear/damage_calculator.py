@@ -242,11 +242,15 @@ class DamageCalculatorPRAM:
             self._collective.index = pd.MultiIndex.from_product([range(n_hystereses), [0]], names=["hysteresis_index", "assessment_point_index"])
 
         # assert that the index contains the two columns "hysteresis_index" and "assessment_point_index"
-        assert self._collective.index.names == ["hysteresis_index", "assessment_point_index"]
+        if self._collective.index.names != ["hysteresis_index", "assessment_point_index"]:
+            raise AssertionError
 
-        assert "P_RAM" in self._collective
-        assert "is_closed_hysteresis" in self._collective
-        assert "run_index" in self._collective
+        if "P_RAM" not in self._collective:
+            raise AssertionError
+        if "is_closed_hysteresis" not in self._collective:
+            raise AssertionError
+        if "run_index" not in self._collective:
+            raise AssertionError
 
         # store some statistics about the DataFrame
         self._n_hystereses = self._collective.groupby("assessment_point_index")["S_min"].count().values[0]
@@ -492,11 +496,15 @@ class DamageCalculatorPRAJ:
             self._collective.index = pd.MultiIndex.from_product([range(n_hystereses), [0]], names=["hysteresis_index", "assessment_point_index"])
 
         # assert that the index contains the two columns "hysteresis_index" and "assessment_point_index"
-        assert self._collective.index.names == ["hysteresis_index", "assessment_point_index"]
+        if self._collective.index.names != ["hysteresis_index", "assessment_point_index"]:
+            raise AssertionError
 
-        assert "run_index" in self._collective
-        assert "D" in self._collective
-        assert "P_RAJ" in self._collective
+        if "run_index" not in self._collective:
+            raise AssertionError
+        if "D" not in self._collective:
+            raise AssertionError
+        if "P_RAJ" not in self._collective:
+            raise AssertionError
 
         # store some statistics about the DataFrame
         self._n_hystereses = self._collective.groupby("assessment_point_index")["S_min"].count().values[0]

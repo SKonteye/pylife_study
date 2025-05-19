@@ -401,7 +401,8 @@ class AbstractDetector(metaclass=ABCMeta):
         """
 
         assert isinstance(samples[0], pd.DataFrame)
-        assert samples[0].index.names == ["load_step", "node_id"]
+        if samples[0].index.names != ["load_step", "node_id"]:
+            raise AssertionError
 
         # extract the representative samples for the first node
         first_node_id = samples.index.get_level_values("node_id")[0]

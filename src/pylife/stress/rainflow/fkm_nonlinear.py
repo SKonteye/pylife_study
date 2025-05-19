@@ -127,7 +127,8 @@ class FKMNonlinearDetector(RFG.AbstractDetector):
         samples : list of floats or list of pd.DataFrame`s
             The samples to be processed by the HCM algorithm.
         """
-        assert len(samples) >= 2
+        if len(samples) < 2:
+            raise AssertionError
         samples, flush = self._adjust_samples_and_flush_for_hcm_first_run(samples)
 
         return self.process(samples, flush=flush)
@@ -146,7 +147,8 @@ class FKMNonlinearDetector(RFG.AbstractDetector):
         samples : list of floats or list of pd.DataFrame`s
             The samples to be processed by the HCM algorithm.
         """
-        assert len(samples) >= 2
+        if len(samples) < 2:
+            raise AssertionError
         return self.process(samples, flush=True)
 
     def process(self, samples, flush=False):
@@ -199,7 +201,8 @@ class FKMNonlinearDetector(RFG.AbstractDetector):
         """
 
         # collected values, which will be passed to the recorder at the end of `process()`
-        assert not isinstance(samples, pd.DataFrame)
+        if isinstance(samples, pd.DataFrame):
+            raise AssertionError
         self._run_index += 1
 
         load_turning_points = self._determine_load_turning_points(samples, flush)

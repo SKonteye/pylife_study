@@ -62,13 +62,18 @@ class P_RAM:
         self._constants = FKMNLConstants().for_material_group(assessment_parameters)
 
         # check if collective contains required columns
-        assert "S_a" in self._collective.columns
-        assert "S_m" in self._collective.columns
-        assert "epsilon_a" in self._collective.columns
+        if "S_a" not in self._collective.columns:
+            raise AssertionError
+        if "S_m" not in self._collective.columns:
+            raise AssertionError
+        if "epsilon_a" not in self._collective.columns:
+            raise AssertionError
 
         # check if the required material parameters are present
-        assert "R_m" in self._assessment_parameters
-        assert "E" in self._assessment_parameters
+        if "R_m" not in self._assessment_parameters:
+            raise AssertionError
+        if "E" not in self._assessment_parameters:
+            raise AssertionError
 
         self._compute_values()
 
@@ -154,11 +159,16 @@ class P_RAJ:
         self._constants = FKMNLConstants().for_material_group(assessment_parameters)
 
         # check if collective contains required columns
-        assert "S_a" in self._collective.columns
-        assert "S_m" in self._collective.columns
-        assert "epsilon_a" in self._collective.columns
-        assert "is_closed_hysteresis" in self._collective.columns
-        assert "run_index" in self._collective.columns
+        if "S_a" not in self._collective.columns:
+            raise AssertionError
+        if "S_m" not in self._collective.columns:
+            raise AssertionError
+        if "epsilon_a" not in self._collective.columns:
+            raise AssertionError
+        if "is_closed_hysteresis" not in self._collective.columns:
+            raise AssertionError
+        if "run_index" not in self._collective.columns:
+            raise AssertionError
 
         # if assessment is done for multiple points at once, work with a multi-indexed data frame
         if not isinstance(self._collective.index, pd.MultiIndex):
@@ -166,15 +176,21 @@ class P_RAJ:
             self._collective.index = pd.MultiIndex.from_product([range(n_hystereses), [0]], names=["hysteresis_index", "assessment_point_index"])
 
         # assert that the index contains the two columns "hysteresis_index" and "assessment_point_index"
-        assert self._collective.index.names == ["hysteresis_index", "assessment_point_index"]
+        if self._collective.index.names != ["hysteresis_index", "assessment_point_index"]:
+            raise AssertionError
 
-        assert (self._collective.run_index.unique() == np.array([1,2])).all() or (self._collective.run_index.unique() == np.array([2])).all()
+        if not ((self._collective.run_index.unique() == np.array([1,2])).all() or (self._collective.run_index.unique() == np.array([2])).all()):
+            raise AssertionError
 
         # check if the required material parameters are present
-        assert "R_m" in self._assessment_parameters
-        assert "E" in self._assessment_parameters
-        assert "n_prime" in self._assessment_parameters
-        assert "K_prime" in self._assessment_parameters
+        if "R_m" not in self._assessment_parameters:
+            raise AssertionError
+        if "E" not in self._assessment_parameters:
+            raise AssertionError
+        if "n_prime" not in self._assessment_parameters:
+            raise AssertionError
+        if "K_prime" not in self._assessment_parameters:
+            raise AssertionError
 
 
         # remove any given index of f_RAM which results from the assessment_parameters.G parameter

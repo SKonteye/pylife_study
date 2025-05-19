@@ -371,10 +371,14 @@ class Gradient3D(Mesh):
         '''
         self.value_key = value_key
 
-        assert "x" in self._obj
-        assert "y" in self._obj
-        assert "z" in self._obj
-        assert value_key in self._obj
+        if "x" not in self._obj:
+            raise AssertionError
+        if "y" not in self._obj:
+            raise AssertionError
+        if "z" not in self._obj:
+            raise AssertionError
+        if value_key not in self._obj:
+            raise AssertionError
 
         # extract only the needed columns, order and sort multi-index
         df = (

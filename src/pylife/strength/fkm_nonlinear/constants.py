@@ -161,7 +161,8 @@ class FKMNLConstants:
 
         """
         # select set of constants according to given material group
-        assert "MatGroupFKM" in assessment_parameters
+        if "MatGroupFKM" not in assessment_parameters:
+            raise AssertionError
 
         material_group = assessment_parameters["MatGroupFKM"]
 
